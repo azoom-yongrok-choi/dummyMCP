@@ -134,10 +134,10 @@ server.tool(
 )
 
 server.tool(
-  "parse-covid-query",
-  "Parse a natural language query for COVID-19 data into structured JSON.",
+  "parse-covid-json",
+  "Parse a natural language into structured JSON for COVID-19 data.",
   {
-    input: z.string().describe("Natural language query for COVID-19 data: country_name, latitude, longitude, date"),
+    input: z.string().describe("Natural language for structured JSON: country_name, latitude, longitude, date"),
   },
   async ({ input }) => {
     const rawOutput = await parseCovidQuery(input);
@@ -238,6 +238,27 @@ server.tool(
     }
   })
 
+server.tool(
+  'json-to-nl',
+  'Convert any JSON object into a key-value string (one per line).',
+  { data: z.record(z.any()) },
+  async ({ data }) => {
+    const entries = Object.entries(data)
+      .filter(([, v]) => v !== undefined && v !== null && v !== '')
+      .map(([k, v]) => `${k}: ${v}`);
+    const text = entries.length > 0
+      ? `The provided information is as follows:\n${entries.join('\n')}\nIs this correct?`
+      : '(no data)';
+    return {
+      content: [
+        {
+          type: 'text',
+          text,
+        },
+      ],
+    };
+  }
+)
 
 async function main() {
   const transport = new StdioServerTransport()
