@@ -1,5 +1,7 @@
+import express from 'express'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+// import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
 import {BigQuery} from '@google-cloud/bigquery'
 import OpenAI from 'openai'
@@ -224,9 +226,47 @@ server.tool(
   }
 )
 
+// MCP 서버 내 Tool 정의 (예: schemaTool.ts)
+server.tool(
+  "get-covid-json-keys", 
+  "Return the JSON schema (keys and types) required to extract COVID-19 related information from user input.",
+  { },
+  async () => {
+    const schema = [
+      { key: "region", type: "string" },
+      { key: "date", type: "date", optional: true },
+      { key: "time", type: "time", optional: true, nullable: true }
+    ];
+
+      return { content: [
+        {
+          type: 'text',
+          text: JSON.stringify(schema),
+        },
+      ]};
+  }
+);
+
+
 async function main() {
-  const transport = new StdioServerTransport()
+  // const transport = new StdioServerTransport()
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+  })
   await server.connect(transport)
+
+  const app = express();
+  app.use(express.json());
+
+  app.post('/mcp', (req: express.Request, res: express.Response) => {
+    transport.handleRequest(req, res, req.body);
+  });
+
+
+  const PORT = process.env.MCP_HTTP_PORT ? Number(process.env.MCP_HTTP_PORT) : 8080;
+  app.listen(PORT, () => {
+    console.error(`MCP HTTP 서버가 ${PORT} 포트에서 Express로 실행 중입니다!`);
+  });
 }
 
 main().catch((error) => {
