@@ -4,7 +4,7 @@ import { z } from 'zod'
 import {BigQuery} from '@google-cloud/bigquery'
 import OpenAI from 'openai'
 import 'dotenv/config'
-import { extractJsonFromLLMResponse, buildQuery } from './utils'
+import { extractJsonFromLLMResponse, buildSelectQuery } from './utils'
 
 const bigquery = new BigQuery({
   keyFilename: 'gcp-key.json',
@@ -64,42 +64,6 @@ General rules:
 
   return completion.choices[0].message.content ?? "";
 }
-
-server.prompt(
-  "parse-covid-query",
-  {
-    input: z.string().describe("Natural language query for COVID-19 data: country_name, latitude, longitude, date"),
-  },
-  async ({ input }) => {
-    const rawOutput = await parseCovidQuery(input);
-    const json = extractJsonFromLLMResponse(rawOutput, OutputSchema);
-
-    if (!json) {
-      return {
-        messages: [
-          {
-            role: 'assistant',
-            content: {
-              type: 'text',
-              text: '[ERROR] LLM response is not a valid JSON: ' + rawOutput,
-            },
-          },
-        ],
-      };
-    } else {
-    return {
-      messages: [
-        {
-          role: 'assistant',
-          content: {
-            type: 'text',
-            text: JSON.stringify(json, null, 2),
-          },
-        },
-      ],
-    };
-  }}
-);
 
 // Tool 
 server.tool(
@@ -169,7 +133,7 @@ server.tool(
   'Query covid19_open_data with structured parameters.',
   OutputSchema.shape,
   async (args) => {
-    const { query, params } = buildQuery('covid_dummy.covid19_open_data', args);
+    const { query, params } = buildSelectQuery('covid_dummy.covid19_open_data', args);
     try {
       const [rows] = await bigquery.query({
         query,
@@ -215,7 +179,7 @@ server.tool(
       };
     }
 
-    const { query, params } = buildQuery('covid_dummy.covid19_open_data', json);
+    const { query, params } = buildSelectQuery('covid_dummy.covid19_open_data', json);
     try {
       const [rows] = await bigquery.query({ query, params });
       return {

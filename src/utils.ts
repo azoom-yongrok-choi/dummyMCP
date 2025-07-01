@@ -17,7 +17,7 @@ export function extractJsonFromLLMResponse(text: string, schema: z.ZodSchema): a
   }
 }
 
-export function buildQuery(tableName: string, args: Record<string, any>, limit: number = 5) {
+export function buildSelectQuery(tableName: string, args: Record<string, any>, limit: number = 5) {
   const where: string[] = [];
   const params: Record<string, any> = {};
 
